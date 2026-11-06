@@ -88,8 +88,7 @@ def _spalten(gruppen: dict, d: dict, F: dict, dunkel: bool, mobil: bool) -> None
                     if foto:
                         c_bild.image(str(foto), width=22)
                     if c_name.button(s["name"], key=f"sp_{k}_{s['id']}", width="stretch",
-                                     type="primary" if an else "secondary",
-                                     help=f"![{s['name']}]({_foto_uri(str(foto))})" if foto else None):
+                                     type="primary" if an else "secondary"):
                         st.session_state.sp_wahl = None if an else s["id"]
                         st.rerun()
                     if c_vgl.button("", key=f"vg_{k}_{s['id']}", icon=":material/compare_arrows:",
