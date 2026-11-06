@@ -2,7 +2,9 @@
 """
 from __future__ import annotations
 
+import base64
 import html
+from functools import lru_cache
 
 import streamlit as st
 
@@ -12,6 +14,27 @@ from speicher import ENTWICKLER
 KAT_FARBE = {"puffer": ("#92d050", "#5f8f2c"), "ww": ("#ffc000", "#a77d00"), "biv": ("#bdd7ee", "#3d6285"),
              "kombi": ("#cc99ff", "#7a4fae")}
 E = html.escape
+
+
+def _foto(s: dict):
+    """Pfad zum Produktfoto aus dem Katalog (oder None)."""
+    f = (s.get("katalog") or {}).get("foto")
+    p = SP.ORDNER / "speicher" / "fotos" / f"{f}.jpg" if f else None
+    return p if p and p.exists() else None
+
+
+@lru_cache(maxsize=None)
+def _foto_uri(pfad: str) -> str:
+    return "data:image/jpeg;base64," + base64.b64encode(open(pfad, "rb").read()).decode()
+
+
+def _vgl_umschalten(sid: str) -> None:
+    vgl = st.session_state.setdefault("sp_vgl", [])
+    if sid in vgl:
+        vgl.remove(sid)
+    else:
+        vgl.append(sid)
+        del vgl[:-2]
 
 
 def _ttnr_text(s: dict) -> str:
@@ -57,11 +80,22 @@ def _spalten(gruppen: dict, d: dict, F: dict, dunkel: bool, mobil: bool) -> None
             with col.container(border=True):
                 if not eintraege:
                     st.caption("kein Speicher")
+                vgl = st.session_state.setdefault("sp_vgl", [])
                 for s, e in eintraege:
                     an = st.session_state.get("sp_wahl") == s["id"]
-                    if st.button(s["name"], key=f"sp_{k}_{s['id']}", width="stretch",
-                                 type="primary" if an else "secondary"):
+                    foto = _foto(s)
+                    c_bild, c_name, c_vgl = st.columns([1, 6, 1], gap="small", vertical_alignment="center")
+                    if foto:
+                        c_bild.image(str(foto), width=22)
+                    if c_name.button(s["name"], key=f"sp_{k}_{s['id']}", width="stretch",
+                                     type="primary" if an else "secondary",
+                                     help=f"![{s['name']}]({_foto_uri(str(foto))})" if foto else None):
                         st.session_state.sp_wahl = None if an else s["id"]
+                        st.rerun()
+                    if c_vgl.button("", key=f"vg_{k}_{s['id']}", icon=":material/compare_arrows:",
+                                    type="primary" if s["id"] in vgl else "tertiary",
+                                    help="Aus dem Vergleich nehmen" if s["id"] in vgl else "Zum Vergleich (max. 2)"):
+                        _vgl_umschalten(s["id"])
                         st.rerun()
                     st.markdown(f'<div style="font-size:11.5px;color:{F["leise"]};margin:-10px 0 6px 4px">'
                                 f'{_tags(s, e, F)}</div>', unsafe_allow_html=True)
@@ -71,10 +105,10 @@ def _detail(s: dict, d: dict, F: dict, wp_id: str | None, mobil: bool) -> None:
     eh = s.get("eheizer") or {}
     kat = s.get("katalog") or {}
     with st.container(border=True):
-        foto = SP.ORDNER / "speicher" / "fotos" / f"{kat.get('foto')}.jpg" if kat.get("foto") else None
-        if foto and foto.exists():
-            k0, k1, k2 = st.columns([0.5, 2.5, 2] if not mobil else [1, 2, 2])
-            k0.image(str(foto), width=70)
+        foto = _foto(s)
+        if foto:
+            k0, k1, k2 = st.columns([0.6, 2.4, 2] if not mobil else [1, 2, 2])
+            k0.image(str(foto), width=110)
         else:
             k1, k2 = st.columns([3, 2] if not mobil else [1, 1])
         meta = [d["kategorien"][s["kategorie"]]] + ([s["info"]] if s.get("info") else []) + \
@@ -90,11 +124,7 @@ def _detail(s: dict, d: dict, F: dict, wp_id: str | None, mobil: bool) -> None:
             vgl = st.session_state.setdefault("sp_vgl", [])
             if st.button("Im Vergleich" if s["id"] in vgl else "Vergleichen", icon=":material/compare_arrows:",
                          key=f"sp_vglknopf_{s['id']}", type="primary" if s["id"] in vgl else "secondary"):
-                if s["id"] in vgl:
-                    vgl.remove(s["id"])
-                else:
-                    vgl.append(s["id"])
-                    del vgl[:-2]
+                _vgl_umschalten(s["id"])
                 st.rerun()
             b1, b2 = st.columns(2)
             if s.get("im"):
@@ -276,7 +306,7 @@ def _vergleich(d: dict, wp_id: str | None) -> None:
             ss.sp_vgl = neu
             st.rerun()
         if not vgl:
-            st.caption("Speicher hier auswählen oder in der Detailansicht auf „Vergleichen“ klicken.")
+            st.caption("Speicher hier auswählen oder in der Liste auf das Vergleichssymbol klicken.")
             return
         sp = [SP.speicher_nach_id(i, d) for i in vgl]
         zeilen = []
@@ -292,10 +322,18 @@ def _vergleich(d: dict, wp_id: str | None) -> None:
             werte = [s.get("vergleich", {}).get(f["titel"], "") for s in sp]
             if any(werte):
                 zeilen.append((f["titel"] + (f" ({f['einheit']})" if f["einheit"] else ""), [x or "–" for x in werte]))
-        kopf = "| | " + " | ".join(f"**{E(s['name'])}**" for s in sp) + " |\n|---|" + "---|" * len(sp) + "\n"
-        st.markdown(kopf + "\n".join(
-            f"| {E(t)} | " + " | ".join((f"**{E(x)}**" if len(sp) == 2 and ws[0] != ws[1] else E(x)) for x in ws) + " |"
-            for t, ws in zeilen))
+        rand = "border-bottom:1px solid rgba(128,128,128,.25);padding:7px 12px"
+        kopf = "".join(
+            f'<th style="{rand};text-align:left;vertical-align:bottom">'
+            + (f'<img src="{_foto_uri(str(_foto(s)))}" style="height:120px;display:block;margin-bottom:6px">' if _foto(s) else "")
+            + f'{E(s["name"])}</th>' for s in sp)
+        rumpf = "".join(
+            f'<tr><td style="{rand};opacity:.7">{E(t)}</td>'
+            + "".join(f'<td style="{rand};font-weight:{700 if len(sp) == 2 and ws[0] != ws[1] else 400}">{E(x)}</td>'
+                      for x in ws) + "</tr>" for t, ws in zeilen)
+        st.markdown(f'<table style="width:100%;border-collapse:collapse;font-size:14px">'
+                    f'<tr><th style="{rand};width:28%"></th>{kopf}</tr>{rumpf}</table>', unsafe_allow_html=True)
+        st.caption("Fett = Unterschied zwischen den beiden Speichern. Maßbilder:")
         cols = st.columns(len(sp))
         for s, c in zip(sp, cols):
             b = SP.bilder(s)
@@ -357,9 +395,11 @@ def seite(F: dict, dunkel: bool = False, mobil: bool = False, kopf_rechts=None) 
             gruppen[s["kategorie"]].append((s, None))
         st.caption(f"{len(ids)} Treffer" if q.strip() else
                    f"{len(ids)} Wärmepumpenspeicher")
+    if ss.get("sp_vgl"):
+        _vergleich(d, wp_id)
     _spalten(gruppen, d, F, dunkel, mobil)
-
-    _vergleich(d, wp_id)
+    if not ss.get("sp_vgl"):
+        _vergleich(d, wp_id)
     s = SP.speicher_nach_id(ss.get("sp_wahl") or "", d)
     if s:
         _detail(s, d, F, wp_id, mobil)
