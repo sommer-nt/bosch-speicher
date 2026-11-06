@@ -242,27 +242,34 @@ def _detail(s: dict, d: dict, F: dict, wp_id: str | None, mobil: bool) -> None:
             _katalog_details(s, d, kat)
             return
         hz = SP.heizer_fuer_speicher(s["id"], d)
+        frei = {e["id"]: e["status"] for v in hz.values() for e in v}
+        st.markdown('<style>[class*="st-key-eh_aus_"] img {filter:grayscale(1); opacity:.3}'
+                    '[class*="st-key-eh_aus_"] p {opacity:.45}</style>', unsafe_allow_html=True)
         typen = list(d["heizertypen"].items())
         for reihe in ([typen] if not mobil else [typen[:2], typen[2:]]):
             for (typ, titel), col in zip(reihe, st.columns(len(reihe))):
-                with col.container(border=True):
+                aus = not hz[typ]
+                with col.container(border=True, key=f"eh_{'aus_' if aus else ''}{typ}_{s['id']}"):
                     st.image(str(SP.ORDNER / "speicher" / SP.HEIZER_BILDER[typ]), width=140 if typ != "flh" else 50)
-                    st.markdown(f"**{titel}**")
+                    st.markdown(f"**{titel}**" + (" – nicht freigegeben" if aus else ""))
                     if typ == "led_hd" and eh.get("handlochdeckel_ttnr"):
                         st.caption(f"Handlochdeckel {eh['handlochdeckel_ttnr']}")
                     elif typ == "led" and eh.get("tiefe_muffe_mm"):
                         st.caption(f"max. Eintauchtiefe {eh['tiefe_muffe_mm']} mm")
-                    if not hz[typ]:
-                        st.caption("nicht freigegeben")
-                    for e in hz[typ]:
-                        h = d["heizer"][e["id"]]
+                    alle = sorted((hid for hid, h in d["heizer"].items() if h["typ"] == typ),
+                                  key=lambda i: (d["heizer"][i]["leistung_kw"] or 0, d["heizer"][i]["spannung"]))
+                    for hid in alle:
+                        h, status = d["heizer"][hid], frei.get(hid)
                         name = ("" if h["modell"] == "E-Heater" else h["modell"] + " · ") + \
                             f'{str(h["leistung_kw"]).replace(".0", "").replace(".", ",")} kW / {h["spannung"]}'
-                        st.markdown(f'{E(name)}' + (f' <b style="color:{F["gelb"]}">nur HZG</b>' if e["status"] == "hzg" else "")
-                                    + (f' <b style="color:{F["rot"]}">zu lang?</b>' if e["id"] in eh.get("zu_lang", []) else "")
+                        grau = "" if status else "opacity:.35;"
+                        st.markdown(f'<div style="{grau}margin-bottom:6px">{E(name)}'
+                                    + (f' <b style="color:{F["gelb"]}">nur HZG</b>' if status == "hzg" else "")
+                                    + (f' <b style="color:{F["rot"]}">zu lang?</b>' if hid in eh.get("zu_lang", []) else "")
+                                    + ("" if status or aus else " <i>nicht freigegeben</i>")
                                     + f'<br><span style="font-size:12px;color:{F["leise"]}">TTNr {h["ttnr"]} · '
                                       f'≥ {h["einbautiefe_mm"]} mm'
-                                    + (f' · {SP.preis_text(h["preis"])}' if h.get("preis") else "") + '</span>',
+                                    + (f' · {SP.preis_text(h["preis"])}' if h.get("preis") else "") + '</span></div>',
                                     unsafe_allow_html=True)
         if any(hz.values()):
             st.caption(" ".join(d["hinweise_heizer"]))
