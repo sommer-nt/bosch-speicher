@@ -167,6 +167,8 @@
   .hz .foto{height:96px;background:#fff;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line-soft)}
   .hz .foto img{max-height:84px;max-width:90%}
   .hz.aus{opacity:.45}
+  .hz.aus .foto img{filter:grayscale(1)}
+  .hz li.nein{opacity:.4}
   .hz h5{margin:0;font-size:13px;padding:8px 10px 2px}
   .hz .unter{font-size:11.5px;color:var(--ink-faint);padding:0 10px 6px}
   .hz ul{list-style:none;margin:0;padding:0 10px 10px;font-size:13px}
@@ -548,12 +550,15 @@ function zeigeDetail(){
                   typ === "led_hd" && eh.tiefe_handloch_mm ? `max. Eintauchtiefe ${eh.tiefe_handloch_mm} mm` : "&nbsp;";
     return `<div class="hz${liste.length ? "" : " aus"}">
       <div class="foto">${BILDER["heizer:" + typ] ? `<img src="${BILDER["heizer:" + typ]}" alt="${esc(titel)}">` : ""}</div>
-      <h5>${esc(titel)}</h5><div class="unter">${unter}</div>
-      <ul>${liste.length ? liste.map(e => { const h = D.heizer[e.id];
-        return `<li><span>${esc(h.modell !== "E-Heater" ? h.modell + " · " : "")}${String(h.leistung_kw).replace(".", ",")} kW / ${esc(h.spannung)}
-          ${e.status === "hzg" ? `<span class="tag bed" title="nur für Heizungsunterstützung">nur HZG</span>` : ""}
+      <h5>${esc(titel)}${liste.length ? "" : " – nicht freigegeben"}</h5><div class="unter">${unter}</div>
+      <ul>${liste.length ? Object.keys(D.heizer).filter(id => D.heizer[id].typ === typ)
+          .sort((a, b) => (D.heizer[a].leistung_kw || 0) - (D.heizer[b].leistung_kw || 0) || String(D.heizer[a].spannung).localeCompare(String(D.heizer[b].spannung)))
+          .map(id => liste.find(e => e.id === id) || {id, status: null}).map(e => { const h = D.heizer[e.id];
+        return `<li${e.status ? "" : ' class="nein"'}><span>${esc(h.modell !== "E-Heater" ? h.modell + " · " : "")}${String(h.leistung_kw).replace(".", ",")} kW / ${esc(h.spannung)}
+          ${e.status === "hzg" ? `<span class="tag bed" title="Nur im Heizungswasser-Teil des Speichers einsetzbar, nicht im Trinkwasser">nur Heizungswasser</span>` : ""}
+          ${e.status ? "" : `<i>nicht freigegeben</i>`}
           ${(eh.zu_lang || []).includes(e.id) ? `<span class="tag alt" title="Mindesteinbautiefe größer als max. Eintauchtiefe des Speichers">zu lang?</span>` : ""}</span>
-          <small>${ttnrHtml(h.ttnr)} · ≥ ${h.einbautiefe_mm} mm${h.preis ? " · " + preisText(h.preis) : ""}</small></li>`; }).join("") : `<li><small>nicht freigegeben</small></li>`}</ul>
+          <small>${ttnrHtml(h.ttnr)} · ≥ ${h.einbautiefe_mm} mm${h.preis ? " · " + preisText(h.preis) : ""}</small></li>`; }).join("") : ""}</ul>
     </div>`;
   }).join("");
 
@@ -598,7 +603,7 @@ function zeigeDetail(){
     </div>
     <h4>Passende E-Heizer <small style="text-transform:none;letter-spacing:0;font-weight:400">${nHz ? nHz + " Varianten" : ""}</small></h4>
     ${eh.hinweis ? `<div class="hinweis${eh.quelle === "spies" ? " info" : ""}">${esc(eh.hinweis)}${eh.herkunft ? ` <small>(Quelle: ${esc(eh.herkunft)})</small>` : ""}</div>` : ""}
-    ${s.eheizer ? `<div class="heizer">${hzHtml}</div>` : `<div class="hinweis info">Für diesen Speicher sind keine E-Heizer hinterlegt.</div>`}
+    ${s.eheizer ? `<div class="unter" style="font-size:12px;color:var(--ink-faint);margin-bottom:6px">Normal dargestellt = für diesen Speicher freigegeben · blass = nicht freigegeben · „nur Heizungswasser“ = nur im Heizungswasser-Teil einsetzbar, nicht im Trinkwasser</div><div class="heizer">${hzHtml}</div>` : `<div class="hinweis info">Für diesen Speicher sind keine E-Heizer hinterlegt.</div>`}
     ${nHz ? `<div class="hinweis info">${esc(D.hinweise_heizer.join(" "))} TTNr anklicken zum Kopieren.</div>` : ""}
     ${abwHtml}
     ${werteHtml ? `<details class="mehr"><summary>Technische Daten laut ${kat.aus_im ? "Installationsanleitung" : "Katalog"} (${kat.werte.length})</summary><div>${werteHtml}</div></details>` : ""}
