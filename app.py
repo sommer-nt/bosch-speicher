@@ -7,6 +7,7 @@ Optional mit Passwort: Umgebungsvariable SPEICHER_PASSWORT.
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 
@@ -14,6 +15,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Bosch Speicher", page_icon="💧", layout="wide")
 
+from speicher.browser import browser  # noqa: E402
 from speicher.seite import seite  # noqa: E402
 
 try:
@@ -60,9 +62,21 @@ def _passwort() -> str | None:
 
 
 PASSWORT = _passwort()
-if PASSWORT and not st.session_state.get("sp_angemeldet"):
-    st.markdown('<div class="marke">BOSCH <span>Speicherauswahl</span><small>Wärmepumpe → Speicher → E-Heizer</small></div>',
+PRUEFWERT = hmac.new(PASSWORT.encode(), b"bosch-speicher-anmeldung", hashlib.sha256).hexdigest() if PASSWORT else ""
+
+def _titel_mit_schalter(anmeldung: str | None, key: str) -> str | None:
+    k1, k2 = st.columns([8, 1])
+    k1.markdown('<div class="marke">BOSCH <span>Speicherauswahl</span><small>Wärmepumpe → Speicher → E-Heizer</small></div>',
                 unsafe_allow_html=True)
+    with k2:
+        return browser(DUNKEL, anmeldung, key=key)
+
+
+if PASSWORT and not st.session_state.get("sp_angemeldet"):
+    gemerkt = _titel_mit_schalter(None, "bs_browser_login")
+    if gemerkt and hmac.compare_digest(gemerkt, PRUEFWERT):     # Tab war schon angemeldet (z. B. Farbwechsel)
+        st.session_state.sp_angemeldet = True
+        st.rerun()
     with st.form("anmelden", border=False):
         eingabe = st.text_input("Passwort", type="password")
         if st.form_submit_button("Anmelden", type="primary", icon=":material/login:"):
@@ -72,4 +86,4 @@ if PASSWORT and not st.session_state.get("sp_angemeldet"):
             st.error("Passwort falsch.")
     st.stop()
 
-seite(F, DUNKEL, MOBIL)
+seite(F, DUNKEL, MOBIL, kopf_rechts=lambda: browser(DUNKEL, PRUEFWERT or None, key="bs_browser"))

@@ -303,14 +303,18 @@ def _vergleich(d: dict, wp_id: str | None) -> None:
                 c.image(str(b[0]), width="stretch")
 
 
-def seite(F: dict, dunkel: bool = False, mobil: bool = False) -> None:
+def seite(F: dict, dunkel: bool = False, mobil: bool = False, kopf_rechts=None) -> None:
     d = SP.laden()
     ss = st.session_state
     st.markdown('<style>[class*="st-key-sp_"] button {justify-content:flex-start; min-height:34px; padding:4px 10px}'
                 '[class*="st-key-sp_"] button p {font-weight:650}</style>', unsafe_allow_html=True)
-    st.markdown(f'<div class="marke">BOSCH <span>Speicherauswahl</span>'
+    k1, k2 = st.columns([8, 1])
+    k1.markdown(f'<div class="marke">BOSCH <span>Speicherauswahl</span>'
                 f'<small>Wärmepumpe → Speicher → E-Heizer · Matrix-Stand {E(d["stand"])} · {E(ENTWICKLER)}</small></div>',
                 unsafe_allow_html=True)
+    if kopf_rechts:
+        with k2:
+            kopf_rechts()
 
     modus = st.segmented_control("Suche", ["Über Wärmepumpe", "Über Speicher / TTNr"], default="Über Wärmepumpe",
                                  key="sp_modus", label_visibility="collapsed") or "Über Wärmepumpe"
