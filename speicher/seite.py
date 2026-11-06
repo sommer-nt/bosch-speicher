@@ -243,6 +243,8 @@ def _detail(s: dict, d: dict, F: dict, wp_id: str | None, mobil: bool) -> None:
             return
         hz = SP.heizer_fuer_speicher(s["id"], d)
         frei = {e["id"]: e["status"] for v in hz.values() for e in v}
+        st.caption("Normal dargestellt = für diesen Speicher freigegeben · blass = nicht freigegeben · "
+                   "„nur Heizungswasser“ = nur im Heizungswasser-Teil einsetzbar, nicht im Trinkwasser")
         st.markdown('<style>[class*="st-key-eh_aus_"] img {filter:grayscale(1); opacity:.3}'
                     '[class*="st-key-eh_aus_"] p {opacity:.45}</style>', unsafe_allow_html=True)
         typen = list(d["heizertypen"].items())
@@ -258,13 +260,15 @@ def _detail(s: dict, d: dict, F: dict, wp_id: str | None, mobil: bool) -> None:
                         st.caption(f"max. Eintauchtiefe {eh['tiefe_muffe_mm']} mm")
                     alle = sorted((hid for hid, h in d["heizer"].items() if h["typ"] == typ),
                                   key=lambda i: (d["heizer"][i]["leistung_kw"] or 0, d["heizer"][i]["spannung"]))
+                    if aus:
+                        continue                                   # ganze Bauart grau, keine Einzelliste
                     for hid in alle:
                         h, status = d["heizer"][hid], frei.get(hid)
                         name = ("" if h["modell"] == "E-Heater" else h["modell"] + " · ") + \
                             f'{str(h["leistung_kw"]).replace(".0", "").replace(".", ",")} kW / {h["spannung"]}'
                         grau = "" if status else "opacity:.35;"
                         st.markdown(f'<div style="{grau}margin-bottom:6px">{E(name)}'
-                                    + (f' <b style="color:{F["gelb"]}">nur HZG</b>' if status == "hzg" else "")
+                                    + (f' <b style="color:{F["gelb"]}" title="Nur im Heizungswasser-Teil des Speichers einsetzbar, nicht im Trinkwasser">nur Heizungswasser</b>' if status == "hzg" else "")
                                     + (f' <b style="color:{F["rot"]}">zu lang?</b>' if hid in eh.get("zu_lang", []) else "")
                                     + ("" if status or aus else " <i>nicht freigegeben</i>")
                                     + f'<br><span style="font-size:12px;color:{F["leise"]}">TTNr {h["ttnr"]} · '
