@@ -1,0 +1,10 @@
+# Bosch Speicher auf dem eigenen Server hinter nginx (speicher.sommer-nt.de).
+# Die App lauscht nur lokal auf 127.0.0.1:${APP_PORT:-8505}; nginx leitet speicher.sommer-nt.de dorthin.
+# Start:  cd deploy && docker compose -p speicher up -d --build
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:${APP_PORT:-8505}:8501"

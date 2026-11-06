@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest>=8
+openpyxl>=3.1      # tools/speicher_import.py (Speichermatrix-Excel)
+pymupdf>=1.24      # tools/katalog_import.py (Katalog-PDFs)
+pillow>=10         # Bilder zuschneiden
