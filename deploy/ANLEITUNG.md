@@ -8,28 +8,11 @@ bleiben unberührt.
 
 **2. Code holen und starten**
 
-Das Repository ist **privat**. Der Server liest es über einen eigenen **Deploy Key** (nur lesen):
+Das Repository ist öffentlich – klonen wie bei Bosch Flow, ohne Schlüssel oder Token:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/bosch_speicher -N "" -C "webmin bosch-speicher"
-cat ~/.ssh/bosch_speicher.pub          # Zeile kopieren
-```
-
-GitHub → `sommer-nt/bosch-speicher` → **Settings → Deploy keys → Add deploy key**: Zeile einfügen,
-„Allow write access“ **nicht** anhaken. Dann auf dem Server:
-
-```bash
-cat >> ~/.ssh/config <<'EOT'
-Host github-speicher
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/bosch_speicher
-    IdentitiesOnly yes
-EOT
-chmod 600 ~/.ssh/config
-
 cd ~
-git clone git@github-speicher:sommer-nt/bosch-speicher.git
+git clone https://github.com/sommer-nt/bosch-speicher.git
 cd bosch-speicher/deploy
 cp .env.beispiel .env && nano .env          # Passwort setzen, APP_PORT=8505
 docker compose -p speicher up -d --build
