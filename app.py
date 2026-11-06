@@ -15,6 +15,8 @@ import streamlit as st
 
 st.set_page_config(page_title="Bosch Speicher", page_icon="💧", layout="wide")
 
+from pathlib import Path  # noqa: E402
+
 from speicher.browser import browser  # noqa: E402
 from speicher.seite import seite  # noqa: E402
 
@@ -61,6 +63,11 @@ def _passwort() -> str | None:
     return None
 
 
+@st.cache_resource
+def HTML_SEITE() -> str:
+    return (Path(__file__).parent / "speicher.html").read_text(encoding="utf-8")
+
+
 PASSWORT = _passwort()
 PRUEFWERT = hmac.new(PASSWORT.encode(), b"bosch-speicher-anmeldung", hashlib.sha256).hexdigest() if PASSWORT else ""
 
@@ -86,4 +93,17 @@ if PASSWORT and not st.session_state.get("sp_angemeldet"):
             st.error("Passwort falsch.")
     st.stop()
 
-seite(F, DUNKEL, MOBIL, kopf_rechts=lambda: browser(DUNKEL, PRUEFWERT or None, key="bs_browser"))
+# Oberfläche: dieselbe wie speicher.html (Vergleich mit ⚖, Foto beim Überfahren, Drucken, Hell/Dunkel).
+# Die native Streamlit-Seite bleibt über ?ansicht=streamlit erreichbar.
+if st.query_params.get("ansicht") == "streamlit":
+    seite(F, DUNKEL, MOBIL, kopf_rechts=lambda: browser(DUNKEL, PRUEFWERT or None, key="bs_browser"))
+else:
+    import streamlit.components.v1 as components
+    st.markdown("""<style>
+    header[data-testid="stHeader"] {display:none}
+    .block-container {padding:4px 0 0 0 !important; max-width:100% !important}
+    [data-testid="stMainBlockContainer"] {padding:4px 0 0 0 !important}
+    .superband {display:none}
+    iframe {height:calc(100vh - 10px) !important; width:100% !important; border:0}
+    </style>""", unsafe_allow_html=True)
+    components.html(HTML_SEITE(), height=900, scrolling=True)
