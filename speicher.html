@@ -111,12 +111,9 @@
             padding:0 5px;margin-left:6px;cursor:pointer;line-height:18px;display:inline-block}
   .vglknopf.an{background:var(--bosch-blue);border-color:var(--bosch-blue);color:#fff}
   .sp{position:relative}
-  .fotohover{display:none;position:absolute;left:calc(100% + 8px);top:-6px;z-index:40;background:#fff;
-             border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:var(--shadow-lg);pointer-events:none}
-  .fotohover img{display:block;height:170px;width:auto}
-  .fotohover small{display:block;text-align:center;color:#78889a;font-size:10.5px;margin-top:4px}
-  .spalte{overflow:visible} .spalte[data-k=kombi] .fotohover,.spalte[data-k=biv] .fotohover{left:auto;right:calc(100% + 8px)}
-  @media (hover:hover){ .sp:hover .fotohover{display:block} }
+  .spalte .sp, .sp.mitfoto{padding-left:44px}
+  .sp .minifoto{position:absolute;left:8px;top:50%;transform:translateY(-50%);height:40px;width:28px;object-fit:contain;
+                background:#fff;border-radius:4px}
   .detailfoto{height:96px;width:auto;background:#fff;border:1px solid var(--line-soft);border-radius:8px;padding:4px}
   .ihinweis{color:var(--ink-faint);font-size:13px;line-height:1;cursor:help}
   .ihinweis:hover{color:var(--bosch-blue)}
@@ -437,8 +434,8 @@ function spKnopf(s, e){
   if(e && e.notiz) tags.push(`<span class="ihinweis" title="Hinweis: ${esc(e.notiz)}">ⓘ</span>`);
   const ttnr = s.ttnr.length ? s.ttnr.join(" / ") : (s.ttnr_hinweis || "TTNr fehlt");
   const foto = s.katalog && s.katalog.foto && BILDER[s.katalog.foto];
-  return `<button class="sp${zustand.sp === s.id ? " an" : ""}" onclick="waehleSpeicher('${s.id}')">
-    ${foto ? `<span class="fotohover"><img src="${foto}" alt=""><small>Foto: Katalog</small></span>` : ""}<b>${esc(s.name)}</b><span class="vglknopf${zustand.vergleich.includes(s.id) ? " an" : ""}" role="button"
+  return `<button class="sp${foto ? " mitfoto" : ""}${zustand.sp === s.id ? " an" : ""}" onclick="waehleSpeicher('${s.id}')">
+    ${foto ? `<img class="minifoto" src="${foto}" alt="">` : ""}<b>${esc(s.name)}</b><span class="vglknopf${zustand.vergleich.includes(s.id) ? " an" : ""}" role="button"
       title="${zustand.vergleich.includes(s.id) ? "aus dem Vergleich nehmen" : "zum Vergleich (max. 2)"}" onclick="event.stopPropagation();vergleichUmschalten('${s.id}')">⚖</span><div class="zeile2"><span>${esc(ttnr)}</span>${s.katalog && s.katalog.preis ? `<span class="preis">${preisText(s.katalog.preis)}</span>` : ""}${tags.join("")}</div></button>`;
 }
 
